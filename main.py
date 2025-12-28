@@ -2,8 +2,9 @@ from binascii import b2a_base64
 from ds18x20 import DS18X20
 from machine import Pin, SPI
 from network import WLAN, STA_IF
-from ntptime import settime
-from onewire import OneWire 
+from onewire import OneWire
+from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
+from struct import unpack
 from time import sleep, sleep_ms, ticks_ms, ticks_diff, localtime
 from urequests import put
 
@@ -11,6 +12,32 @@ from st7735 import TFT, FONT, TFTColor
 
 from config import WIFI_NETWORKS, GITHUB_PUSH_INTERVAL_MS, CONNECTED_SENSORS, GITHUB_TOKEN
 
+__diagram__ = """
+  Looking from "above"
+                ┏━━━━┓USB CONNECTION          
+          ┌─────┃    ┃─────┐
+ GP0  | 01│     ┗━━━━┛     │40 | VBUS
+ GP1  | 02│                │39 | VSYS
+ GND  | 03│                │38 | GND
+ GP2  | 04│     ╭─╮        │37 | 3V3_EN
+ GP3  | 05│     │ │        │36 | 3V3(OUT)  - SPLIT TO SCREEN VCC and SENSOR VCC
+ GP4  | 06│     ╰─╯        │35 | ADC_VREF
+ GP5  | 07│                │34 | GP28  - SENSOR DAT
+ GND  | 08│                │33 | GND   - SENSOR GND
+ GP6  | 09│    ┌─────┐     │32 | GP27
+ GP7  | 10│    │     │     │31 | GP26
+ GP8  | 11│    │     │     │30 | RUN
+ GP9  | 12│    └─────┘     │29 | GP22
+ GND  | 13│                │28 | GND
+ GP10 | 14│                │27 | GP21  - SCREEN LED+
+ GP11 | 15│                │26 | GP20  - SCREEN RESET
+ GP12 | 16│                │25 | GP19  - SCREEN SDA/MOSI
+ GP13 | 17│                │24 | GP18  - SCREEN SCI/SCK
+ GND  | 18│                │23 | GND   - SCREEN GND
+ GP14 | 19│                │22 | GP17  - SCREEN CS
+ GP15 | 20│                │21 | GP16  - SCREEN A0/DC
+          └────────────────┘
+"""
 
 class Sensor:
     def __init__(self, ds: DS18X20, rom: bytes, name: str, label: str):
@@ -92,21 +119,16 @@ class Display(TFT):
         else:
             self.text((0, 150), "Push: NEVER", TFT.YELLOW, 1)
 
-    def show_exception(self, exc):
+    def show_fatal_error(self, error: Exception | str):
         self.fill(TFT.BLACK)
         self.text((0, 5), "*EXCEPTION*", TFT.RED, 2)
         y = 25
-        # from sys import print_exception
-        # from io import StringIO
-        # buf = StringIO()
-        # print_exception(exc, buf)
-        # msg = buf.getvalue()
-        msg = str(exc)
+        msg = str(error)
+        print(msg)
         for i in range(0, len(msg), 20):
             self.text((0, y), (msg[i:i+20]), TFT.RED, 1)
             y += 10
-        print(msg)
-
+        
 
 class WiFi(WLAN):
     def __init__(self):
@@ -114,7 +136,6 @@ class WiFi(WLAN):
         self.active(True)
         self.ip = ""
         self.ssid = ""
-        self.time_synced = False
         if self.isconnected():
             self.ip, _, _, _ = self.ifconfig()
             self.ssid = self.config('ssid')
@@ -122,7 +143,6 @@ class WiFi(WLAN):
     def try_to_connect(self) -> bool:
         self.ssid = ""
         self.ip = ""
-        self.time_synced = False
         wifi_connect_timeout_ms = 10_000
         available = {net[0].decode() for net in self.scan()}
         for ssid, pw in WIFI_NETWORKS:
@@ -141,7 +161,13 @@ class WiFi(WLAN):
 
 class Runner:
     def __init__(self):
+        self.errors = False
+        self.last_temp_stamp = None
+        self.last_push_stamp = None
+        self.last_push_had_errors = False
+        self.last_push_ms = 0
         self.led = Pin("LED", machine.Pin.OUT)
+        
         try:
             self.tft = Display()
         except Exception as e:
@@ -159,57 +185,51 @@ class Runner:
         ow = OneWire(Pin(28))
         ds = DS18X20(ow)
         scanned_roms = ds.scan()
-        print(f"{scanned_roms=}")
         self.sensors = []
         for search_id, search_hex, search_name in CONNECTED_SENSORS:
-            print(f"Searching for rom with hex {search_hex}")
-            try:
-                for rom in scanned_roms:
-                    sensor_hex = rom.hex()
-                    print(f"inspecting scanned rom with hex: {sensor_hex}")
-                    if sensor_hex == search_hex:
-                        self.sensors.append(Sensor(ds, rom, search_name, search_id))
-                        break
-                else: # we made it through the search loop and didn't break out, so we ended up here, meaning we couldn't find the one
-                    pass
-            except Exception as e:
-                raise RuntimeError(f"Could not initialize sensor {search_name} with label {search_id}") from e
-        # TODO: Throw exception if size of self.sensors != size of CONNECTED_SENSORS
+            found = False
+            for rom in scanned_roms:
+                sensor_hex = rom.hex()
+                if sensor_hex == search_hex:
+                    self.sensors.append(Sensor(ds, rom, search_name, search_id))
+                    found = True
+                    break
+            if not found:
+                self.tft.show_fatal_error(f"Could not initialize sensor {search_name} with label \"{search_id}\"; check connections; will restart in 30 seconds")
+                self.errors = True
+                sleep(30)
+                return
         self.tft.text((0, 60), "Sensors: OK", TFT.WHITE, 2)
-        try:
-            self.sync_time()  # do this once each boot for sure
-            self.tft.text((0, 80), "Clock:   OK", TFT.WHITE, 2)
-            t = localtime()
-            self.tft.text((0, 100), "Date: {:02d}/{:02d}".format(t[1], t[2]), TFT.WHITE, 2)
-            self.tft.text((0, 120), "UTC:  {:02d}:{:02d}".format(t[3], t[4]), TFT.WHITE, 2)
-        except Exception as e:
-            self.tft.text((0, 80), "CLOCK ERROR", TFT.RED, 2)
-        
-        sleep(2)
-        self.last_temp_stamp = None
-        self.last_push_stamp = None
-        self.last_push_had_errors = False
-        self.last_push_ms = 0
+        if self.wlan.isconnected():
+            if self.sync_time():  # do this once each boot for sure
+                t = localtime()
+                self.tft.text((0, 80), "Clock:   OK", TFT.WHITE, 2)
+                self.tft.text((0, 100), "Date: {:02d}/{:02d}".format(t[1], t[2]), TFT.WHITE, 2)
+                self.tft.text((0, 120), "UTC:  {:02d}:{:02d}".format(t[3], t[4]), TFT.WHITE, 2)
+            else:
+                self.tft.show_fatal_error("CLOCK ERROR, Will continue to boot in 10 seconds, but cannot publish results.")
+                self.errors = True
+                sleep(10)
         
     def run(self):
         self.tft.regular_update(self)
         while True:
             try:
+                self.update_temperatures()
+                self.last_temp_stamp = localtime()
+                time_synced = False
                 if not self.wlan.isconnected():
                     # try to connect, but if we can't after 10 seconds, just continue to updating temps and looping
                     self.wlan.try_to_connect()
-                if not self.wlan.time_synced:
-                    self.sync_time()
-                self.update_temperatures()
-                self.last_temp_stamp = localtime()
-                if self.wlan.isconnected() and ticks_diff(ticks_ms(), self.last_push_ms) > GITHUB_PUSH_INTERVAL_MS:
-                    all_successful = self.push_to_github()
-                    if all_successful:
-                        self.last_push_ms = ticks_ms()
-                        self.last_push_stamp = localtime()
-                        self.last_push_had_errors = False
-                    else:
-                        self.last_push_had_errors = True
+                if self.wlan.isconnected():
+                    if self.sync_time() and ticks_diff(ticks_ms(), self.last_push_ms) > GITHUB_PUSH_INTERVAL_MS:
+                        all_successful = self.push_to_github()
+                        if all_successful:
+                            self.last_push_ms = ticks_ms()
+                            self.last_push_stamp = localtime()
+                            self.last_push_had_errors = False
+                        else:
+                            self.last_push_had_errors = True
                 self.tft.regular_update(self)
                 sleep(5)
             except KeyboardInterrupt:  # pragma: no cover
@@ -217,7 +237,7 @@ class Runner:
                 return
             except Exception as e:
                 print(e)
-                self.tft.show_exception(e)
+                self.tft.show_fatal_error(e)
                 sleep(30)
 
     def update_temperatures(self):
@@ -230,13 +250,29 @@ class Runner:
             except Exception as e:
                 raise Exception(f"Could not get temperature from sensor named {sensor.name}") from e
 
-    def sync_time(self):
-        try:
-            #settime()  # will be in UTC always, fine for now
-            self.wlan.time_synced = True
-        except Exception as e:
-            raise Exception(f"Error syncing time: {e}") from e
-
+    def sync_time(self, timeout=3, retries=3):
+        ntp_delta = 2208988800  # 1900 → 1970
+        addr = getaddrinfo("pool.ntp.org", 123)[0][-1]
+        s = socket(AF_INET, SOCK_DGRAM)
+        s.settimeout(timeout)
+        msg = b'\x1b' + 47 * b'\0'
+        for _ in range(retries):
+            try:
+                s.sendto(msg, addr)
+                data, _ = s.recvfrom(48)
+                t = unpack("!I", data[40:44])[0] - ntp_delta
+                tm = localtime(t)
+                machine.RTC().datetime((
+                    tm[0], tm[1], tm[2], tm[6] + 1,
+                    tm[3], tm[4], tm[5], 0
+                ))
+                s.close()
+                return True
+            except Exception as e:
+                last_error = e
+        s.close()
+        return False
+    
     def push_to_github(self) -> bool:
         # we will return true if all were successful, but if any fail, it's fine, the unresponsive sensor check will alert us
         all_success = True
@@ -281,6 +317,10 @@ if __name__ == "__main__":
         print("USB detected – skipping auto start")
         sleep(2)  # give Thonny time to connect
     else:
-        Runner().run()
+        while True:
+            r = Runner()
+            if r.errors:
+                continue
+            r.run()
 
 
