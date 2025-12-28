@@ -25,6 +25,10 @@ These will be changes to the current major version, so basically small design tw
  - For Pico I believe I used (2) M2x6
  - For the lid, I believe I used (2) M2.3x8, but I am not sure
 
+### Code
+- Make the sensor box inherit the TFT and sensor base classes
+- Try to clean it up as much as possible...simple simple
+
 ## Version 4
 
 These are more drastic changes that necessitate another round of iteration, or different hardware.
@@ -36,3 +40,7 @@ These are more drastic changes that necessitate another round of iteration, or d
 - Consider using studs like a PC motherboard for the temperature sensor breakout board, and possibly the Pico
 - But also on the Pico, consider just making a slot for it to slide in horizontally...it could reduce height
 - Use a different connector for the sensors, perhaps a USB.  It really wouldn't be too hard to do this.  A nice USB C breakout board with a female port on the outside surface of the box (https://www.amazon.com/Female-Terminal-Adapter-Breakout-Output/dp/B0BKH21YGV/), and still use the sensor breakout board with the built-in resistor, and then just a screw terminal USB C male for the sensors to firmly screw into.
+
+### Code
+- Add unit testing
+- Add script to auto clean up old results, run once a week and open a PR?
