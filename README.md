@@ -14,7 +14,7 @@ The temperature sensor kits use this hardware:
 
 I use Tinkercad to design my 3D printed boxes.  I will try to keep a link to the design up to date here, but for now this is an image:
 
-[Rendered 3D Model of the Case](3dmodel.png)
+![Rendered 3D Model of the Case](3dmodel.png)
 
 I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com/dp/B0CMHM6XQG)  It has a very small print area, which has forced me to rethink the design multiple times.  For better or for worse.
  
