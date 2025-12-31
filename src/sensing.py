@@ -16,6 +16,9 @@ from st7735 import TFT, FONT, TFTColor
 
 from config import WIFI_NETWORKS, GITHUB_PUSH_INTERVAL_MS, CONNECTED_SENSORS, GITHUB_TOKEN
 
+__version__ = 3
+__revision__ = 2
+
 __diagram__ = """
   Looking from "above"
                 ┏━━━━┓USB CONNECTION          
@@ -82,6 +85,16 @@ class SensorBox(TFT):
         # init the onboard LED as a basic means of communicating status
         self.led = Pin("LED", Pin.OUT)
 
+        post_y_starting = 0
+        post_y_version = 18
+        post_y_screen = 36
+        post_y_sensors = 54
+        post_y_wifi = 72
+        post_y_clock = 90
+        post_y_date = 108
+        post_y_time = 126
+        post_y_booting = 144
+
         # init the TFT base class to get a terminal first
         try:
             spi = SPI(0, baudrate=20_000_000, polarity=0, phase=0, sck=Pin(self.PIN_SCI_SCK),
@@ -98,8 +111,9 @@ class SensorBox(TFT):
                 self.flash_led(3)
                 sleep(2)
                 self.wdt.feed()
-        self.display_text((15, 0), "STARTING", TFT.GREEN, 2)
-        self.display_text((0, 20), "Screen:  OK", TFT.WHITE, 2)
+        self.display_text((15, post_y_starting), "STARTING", TFT.GREEN, 2)
+        self.display_text((0, post_y_version), f"Version {__version__}:{__revision__}", TFT.WHITE, 2)
+        self.display_text((0, post_y_screen), "Screen:  OK", TFT.WHITE, 2)
         self.wdt.feed()
 
         # set up the sensors now
@@ -118,10 +132,10 @@ class SensorBox(TFT):
                     sleep(2)
                     self.wdt.feed()
             self.sensors.append(Sensor(rom, search_name, label))
-        self.display_text((0, 40), "Sensors: OK", TFT.WHITE, 2)
+        self.display_text((0, post_y_sensors), "Sensors: OK", TFT.WHITE, 2)
         self.wdt.feed()
 
-        # init the Wi-Fi
+        # init the Wi-Fi and try to sync the clock
         self.wlan = WLAN(STA_IF)
         self.wlan.active(True)
         self.ip = ""
@@ -130,23 +144,23 @@ class SensorBox(TFT):
             self.ip, _, _, _ = self.wlan.ifconfig()
             self.ssid = self.wlan.config('ssid')
         if self.wlan.isconnected():
-            self.display_text((0, 60), "Wi-Fi:   OK", TFT.WHITE, 2)
-        else:
-            self.display_text((0, 60), "Wi-Fi:  ERR", TFT.RED, 2)
-        self.wdt.feed()
-
-        # finally the clock
-        if self.wlan.isconnected():
+            self.display_text((0, post_y_wifi), "Wi-Fi:   OK", TFT.WHITE, 2)
             self.try_to_sync_time()
             if self.time_synced:
                 t = localtime()
-                self.display_text((0, 80), "Clock:   OK", TFT.WHITE, 2)
-                self.display_text((0, 100), "Date: {:02d}/{:02d}".format(t[1], t[2]), TFT.WHITE, 2)
-                self.display_text((0, 120), "UTC:  {:02d}:{:02d}".format(t[3], t[4]), TFT.WHITE, 2)
+                self.display_text((0, post_y_clock), "Clock:   OK", TFT.WHITE, 2)
+                self.display_text((0, post_y_date), "Date: {:02d}/{:02d}".format(t[1], t[2]), TFT.WHITE, 2)
+                self.display_text((0, post_y_time), "UTC:  {:02d}:{:02d}".format(t[3], t[4]), TFT.WHITE, 2)
             else:
                 self.show_fatal_error("CLOCK SYNC ERROR, will continue to boot in 5 seconds and retry sync later.")
                 sleep(5)
-        self.display_text((0, 140), "BOOTING UP!", TFT.WHITE, 2)
+        else:
+            self.display_text((0, post_y_wifi), "Wi-Fi:  ERR", TFT.RED, 2)
+            self.display_text((0, post_y_date), "COULD NOT ", TFT.RED, 2)
+            self.display_text((0, post_y_time), "TO WI-FI", TFT.RED, 2)
+        self.wdt.feed()
+
+        self.display_text((0, post_y_booting), "BOOTING UP!", TFT.WHITE, 2)
         self.wdt.feed()
 
     def run(self):
@@ -157,7 +171,7 @@ class SensorBox(TFT):
                 self.wdt.feed()
                 self.last_temp_stamp = localtime()
                 if not self.wlan.isconnected():
-                    # try to connect, but if we can't after 10 seconds, just continue to updating temps and looping
+                    # try to connect, but if we can't, just continue to updating temps and looping
                     self.try_to_connect_to_wifi()
                     self.wdt.feed()
                 if self.wlan.isconnected():
@@ -166,7 +180,6 @@ class SensorBox(TFT):
                         self.wdt.feed()
                     if self.time_synced and ticks_diff(ticks_ms(), self.last_push_ms) > GITHUB_PUSH_INTERVAL_MS:
                         all_successful = self.push_to_github()
-                        print(f"GH PUSH SUCCESSFUL? {all_successful}")
                         if all_successful:
                             self.last_push_ms = ticks_ms()
                             self.last_push_stamp = localtime()
