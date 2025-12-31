@@ -12,29 +12,27 @@ These will be changes to the current major version, so basically small design tw
 - [x] Perhaps make title headings smaller to allow for it
 
 ### Case
-- [ ] Fix the lid mount posts, make them much taller in the base and reduce the towers on the lid accordingly
-- [ ] Add screw relief in the lid so that the lid screws are within the plastic 
+- [x] Fix the lid mount posts, make them much taller in the base and reduce the towers on the lid accordingly
+- [x] Add screw relief in the lid so that the lid screws are within the plastic 
 - [x] Make sure to use proper wire strippers to get a great connection in the sensor breakout board
-- [ ] Add small elevations to the bottom of the Pico so we only have to use 2 screws
 - [x] Use the power splitter jumper cable to eliminate the junction box
-- [ ] Reduce the usb power hole slightly
-- [ ] Perhaps just 2 screen screws
-- [ ] Add about 0.25mm to each hole
+- [x] Reduce the usb power hole slightly
+- [x] Add about 0.25mm to each hole
 - [ ] Document every screw used very carefully and decide whether we need larger holes or not
- - For sensor breakout board, I believe I currently used (2) M2.3x5
- - For Pico I believe I used (2) M2x6
- - For the lid, I believe I used (2) M2.3x8, but I am not sure
+  - For sensor breakout board, I believe I currently used (2) M2.3x5
+  - For Pico I believe I used (2) M2x6
+  - For the lid, I believe I used (2) M2.3x8, but I am not sure
 
 ### Code
-- [ ] Make the sensor box inherit the TFT and sensor base classes
-- [ ] Try to clean it up as much as possible...simple simple
+- [x] Make the sensor box inherit the TFT and sensor base classes
+- [x] Try to clean it up as much as possible...simple simple
 
 ## Version 4
 
 These are more drastic changes that necessitate another round of iteration, or different hardware.
 
 ### General
-- Add a simple LED with a small hole in the case for it as a backup communication signal
+- Add a simple LED with a small hole in the case for it as a backup communication signal - already added a prewired and preresistored LED to my amazon
 
 ### Screen
 - I think start by trying a different screen, preferably one that doesn't have that drastic of a bezel exposed
