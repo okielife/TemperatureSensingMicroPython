@@ -33,6 +33,9 @@ These will be changes to the current major version, so basically small design tw
 
 These are more drastic changes that necessitate another round of iteration, or different hardware.
 
+### General
+- Add a simple LED with a small hole in the case for it as a backup communication signal
+
 ### Screen
 - I think start by trying a different screen, preferably one that doesn't have that drastic of a bezel exposed
 
