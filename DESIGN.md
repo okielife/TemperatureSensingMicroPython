@@ -7,16 +7,16 @@ Here I'd like to keep a list of notes for future designs.
 These will be changes to the current major version, so basically small design tweaks using the same hardware
 
 ### Screen
-- [ ] Show current design version on the screen
-- [ ] Make temperatures bigger
-- [ ] Perhaps make title headings smaller to allow for it
+- [x] Show current design version on the screen
+- [x] Make temperatures bigger
+- [x] Perhaps make title headings smaller to allow for it
 
 ### Case
 - [ ] Fix the lid mount posts, make them much taller in the base and reduce the towers on the lid accordingly
 - [ ] Add screw relief in the lid so that the lid screws are within the plastic 
-- [ ] Make sure to use proper wire strippers to get a great connection in the sensor breakout board
+- [x] Make sure to use proper wire strippers to get a great connection in the sensor breakout board
 - [ ] Add small elevations to the bottom of the Pico so we only have to use 2 screws
-- [ ] Use the power splitter jumper cable to eliminate the junction box
+- [x] Use the power splitter jumper cable to eliminate the junction box
 - [ ] Reduce the usb power hole slightly
 - [ ] Perhaps just 2 screen screws
 - [ ] Add about 0.25mm to each hole
