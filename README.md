@@ -18,3 +18,17 @@ I use Tinkercad to design my 3D printed boxes.  I will try to keep a link to the
 
 I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com/dp/B0CMHM6XQG)  It has a very small print area, which has forced me to rethink the design multiple times.  For better or for worse.
  
+# Assembly Instructions
+
+- Grab the 3D models, parts list, and code from a specific revision.
+- Print the base and lid and order the parts
+- Test fit the screen, breakout board, and pico, checking screw holes
+- Screw in Pico with 3 M2x6mm screws
+- Use wire strippers on the temperature sensor(s) to trim back the wires and give a good amount to hold in the sensor
+- Screw them into the sensor tightly
+- Add jumper cables to the sensor, preferably brown ground, and yellow for data, and then one of the wire splitter ends on the vcc
+- Feed wires through and screw into place with 2 M3x5mm screws
+- Attach 7 jumper wires to Pico GP21 - GP16, which will all wire to the screen
+- Also for debugging add a jumper from GP22 to GND
+- Attach screen wires, and attach the VCC splitter end to the screen
+- Attach the 3 remaining wires (2 sensor and 1 splitter) to the pico
