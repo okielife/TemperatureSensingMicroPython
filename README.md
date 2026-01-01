@@ -38,3 +38,8 @@ I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com
 - With the debugging jumper attached, execute sensing.py and see what happens
 - Make sure config.py has the right github frequency, unhook the debugging jumper
 - Screw screen to lid using 3 M2.3x5mm screws
+- Test fit led-to-base screws with 2 M2.3x10mm screws
+  - The plastic sometimes clogs the holes, so plunge the screws all the way through the base holes first
+- Then snap lid into place, screw them in to tighten it
+- Re-run main.py to test it out, it should start executing right away (verifies you didn't leave the debugging jumper on)
+- Deploy!
