@@ -31,6 +31,7 @@ These will be changes to the current major version, so basically small design tw
 
 ### Case
 - [ ] The temperature sensor breakout board screw holes need to be very slightly adjusted.  On the "top" one, which is right near the back wall, pull that toward the center of the box just barely...maybe 0.5mm?
+- [ ] Take out the "top" or "back" left Pico hole - it's covered by the temperature sensor wires
 
 ## Version 4
 
