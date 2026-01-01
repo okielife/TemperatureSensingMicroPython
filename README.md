@@ -32,3 +32,9 @@ I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com
 - Also for debugging add a jumper from GP22 to GND
 - Attach screen wires, and attach the VCC splitter end to the screen
 - Attach the 3 remaining wires (2 sensor and 1 splitter) to the pico
+- Flash the Pico with MicroPython - I'm using 1.27.0 because that's what Thonny currently defaults to
+- In Thonny, browse the file sidebar for the code locally on your machine, then find config.py, sensing.py, main.py and st7735.py, and on each one, choose "Upload to /" to copy them to the Pico
+- Go into the config.py file and update the attached sensors and configuration as needed
+- With the debugging jumper attached, execute sensing.py and see what happens
+- Make sure config.py has the right github frequency, unhook the debugging jumper
+- Screw screen to lid using 3 M2.3x5mm screws
