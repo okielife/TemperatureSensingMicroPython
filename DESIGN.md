@@ -2,7 +2,7 @@
 
 Here I'd like to keep a list of notes for future designs.
 
-## Version 3, Next Revision
+## Version 3, Revision 2
 
 These will be changes to the current major version, so basically small design tweaks using the same hardware
 
@@ -26,6 +26,11 @@ These will be changes to the current major version, so basically small design tw
 ### Code
 - [x] Make the sensor box inherit the TFT and sensor base classes
 - [x] Try to clean it up as much as possible...simple simple
+
+## Version 3, Revision 3
+
+### Case
+- [ ] The temperature sensor breakout board screw holes need to be very slightly adjusted.  On the "top" one, which is right near the back wall, pull that toward the center of the box just barely...maybe 0.5mm?
 
 ## Version 4
 
