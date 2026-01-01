@@ -157,7 +157,7 @@ class SensorBox(TFT):
         else:
             self.display_text((0, post_y_wifi), "Wi-Fi:  ERR", TFT.RED, 2)
             self.display_text((0, post_y_date), "COULD NOT ", TFT.RED, 2)
-            self.display_text((0, post_y_time), "TO WI-FI", TFT.RED, 2)
+            self.display_text((0, post_y_time), "CONNECT", TFT.RED, 2)
         self.wdt.feed()
 
         self.display_text((0, post_y_booting), "BOOTING UP!", TFT.WHITE, 2)

@@ -1,7 +1,7 @@
 # ---- WiFi ----
 WIFI_NETWORKS = [
-    ("Primary Wi-Fi Network Name", "Primary Wi-Fi Network Password"),  # preferred, deployed location
-    ("Secondary Wi-Fi Network Name", "Secondary Wi-Fi Network Password"),  # backup, home, during development
+    ("MiFi8000-C1DE", "9df7061f"),
+    ("EmeraldWiFi", "rejoice27"),
 ]
 
 # ---- Timing ----
@@ -14,12 +14,12 @@ CONNECTED_SENSORS = [
 ]
 KNOWN_SENSOR_DATA = [
     "Must match the config in https://github.com/okielife/TempSensors/blob/main/_data/config.json",
-    "** really should keep these to 21 characters or less..."
+    "** really should keep these to 18 characters or less..."
     "123456789012345678901",
     "Emerald_Garage_Frig",
     "Emerald_Garage_Frzr",
-    "Emerald_Kitchen_Frzr",
-    "Emerald_Kitchen_Frig",
+    "Emerald_Kit_Freeze",
+    "Emerald_Kit_Fridge",
     "P_Garage_Freezer",
     "P_South_Vert_Freezer",
     "P_South_Vert_Fridge",
