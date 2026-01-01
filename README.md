@@ -36,7 +36,8 @@ I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com
 - In Thonny, browse the file sidebar for the code locally on your machine, then find config.py, sensing.py, main.py and st7735.py, and on each one, choose "Upload to /" to copy them to the Pico
 - Go into the config.py file and update the attached sensors and configuration as needed
 - With the debugging jumper attached, execute sensing.py and see what happens
-- Make sure config.py has the right github frequency, unhook the debugging jumper
+- Update config.py to have the right github frequency, wifi networks, and github token
+- Unhook the debugging jumper
 - Screw screen to lid using 3 M2.3x5mm screws
 - Test fit led-to-base screws with 2 M2.3x10mm screws
   - The plastic sometimes clogs the holes, so plunge the screws all the way through the base holes first
