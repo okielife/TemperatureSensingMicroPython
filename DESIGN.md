@@ -30,9 +30,10 @@ These will be changes to the current major version, so basically small design tw
 ## Version 3, Revision 3
 
 ### Case
-- [ ] The temperature sensor breakout board screw holes need to be very slightly adjusted.  On the "top" one, which is right near the back wall, pull that toward the center of the box just barely...maybe 0.5mm?
-- [ ] Take out the "top" or "back" left Pico hole - it's covered by the temperature sensor wires
-- [ ] The screen screw holes are very slightly out of alignment...the one by itself seems a little too far over "to the right"
+- [x] ~~The temperature sensor breakout board screw holes need to be very slightly adjusted.  On the "top" one, which is right near the back wall, pull that toward the center of the box just barely...maybe 0.5mm?~~
+- [x] For version 3.3, I am changing the temperature sensor breakout board part, and it is very slightly different, I adjusted the model accordingly.
+- [x] Take out the "top" or "back" left Pico hole - it's covered by the temperature sensor wires
+- [x] The screen screw holes are very slightly out of alignment...the one by itself seems a little too far over "to the right"
 - [ ] Use really nice wire labels :)
 
 ### Screen
