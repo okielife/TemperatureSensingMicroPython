@@ -22,6 +22,7 @@ I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com
 # Assembly Instructions
 
 - Grab the 3D models, parts list, and code from a specific revision.
+- Flash the Pico with MicroPython - I'm using 1.27.0 because that's what Thonny currently defaults to -- need to do this early before screwing in the pico
 - Print the base and lid and order the parts
 - Test fit the screen, breakout board, and pico, checking screw holes
 - Screw in Pico with 3 M2x6mm screws
@@ -33,8 +34,7 @@ I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com
 - Attach 7 jumper wires to Pico GP21 - GP16, which will all wire to the screen
 - Also for debugging add a jumper from GP22 to GND
 - Attach screen wires, and attach the VCC splitter end to the screen
-- Attach the 3 remaining wires (2 sensor and 1 splitter) to the pico
-- Flash the Pico with MicroPython - I'm using 1.27.0 because that's what Thonny currently defaults to
+- Attach the 3 remaining wires (2 sensor and 1 splitter) to the pico (sensor DAT to GP28, sensor GND to GND, splitter to 3V3OUT)
 - In Thonny, browse the file sidebar for the code locally on your machine, then find config.py, sensing.py, main.py and st7735.py, and on each one, choose "Upload to /" to copy them to the Pico
 - Go into the config.py file and update the attached sensors and configuration as needed
 - With the debugging jumper attached, execute sensing.py and see what happens
