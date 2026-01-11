@@ -6,7 +6,8 @@ My goal with this repo is to provide everything needed for someone to construct 
 
 The temperature sensor kits use this hardware:
 - Raspberry Pico W (https://www.amazon.com/dp/B0BMP5546H)
-- DS18x20 temperature sensors with convenient little breakout boards (https://www.amazon.com/dp/B09NVWNGLQ)
+- DS18x20 temperature sensors (https://www.amazon.com/dp/B09NVFJYPS)
+- Convenient DS18x20 breakout boards (https://www.amazon.com/dp/B09NVWNGLQ)
 - A 1.8", 128x160, ST7735r color LCD screen (https://www.amazon.com/dp/B00LSG51MM)
 - Some short female-to-female jumper cables (https://www.amazon.com/dp/B0BRTKTV64)
 - Short female-to-dual-female splitter jumper cables (https://www.amazon.com/dp/B0DSZWFS1V)
@@ -24,9 +25,10 @@ I use a very small Tina2S 3D printer to print the boxes. (https://www.amazon.com
 - Print the base and lid and order the parts
 - Test fit the screen, breakout board, and pico, checking screw holes
 - Screw in Pico with 3 M2x6mm screws
-- Use wire strippers on the temperature sensor(s) to trim back the wires and give a good amount to hold in the sensor
-- Screw them into the sensor tightly
+- If the temperature sensors are new, make sure to run the src/print_rom.py script to get the ROM code for that sensor
+- Use wire strippers on the temperature sensor(s) to trim back the covering, and then strip the wires and give a good amount to hold in the sensor
 - Add jumper cables to the sensor, preferably brown ground, and yellow for data, and then one of the wire splitter ends on the vcc
+- Unscrew the breakout board terminal screws to open the ports, then screw the sensor(s) wires into the sensor breakout board tightly (yellow DAT, red VCC, black GND)
 - Feed wires through and screw into place with 2 M3x5mm screws
 - Attach 7 jumper wires to Pico GP21 - GP16, which will all wire to the screen
 - Also for debugging add a jumper from GP22 to GND
