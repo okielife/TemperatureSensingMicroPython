@@ -10,14 +10,16 @@ from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
 from struct import unpack
 from time import sleep, sleep_ms, ticks_ms, ticks_diff, localtime
 # noinspection PyPackageRequirements
-from urequests import put
+from urequests import get, put
+# noinspection PyPackageRequirements
+from ujson import load as load_json
 
 from st7735 import TFT, FONT, TFTColor
 
-from config import WIFI_NETWORKS, GITHUB_PUSH_INTERVAL_MS, CONNECTED_SENSORS, GITHUB_TOKEN
+from config import WIFI_NETWORKS, CONNECTED_SENSORS, GITHUB_TOKEN
 
 __version__ = 3
-__revision__ = 3
+__revision__ = 4
 
 __diagram__ = """
   Looking from "above"
@@ -52,12 +54,12 @@ class DummyWatchdog:
 
 
 class Sensor:
-    def __init__(self, rom: bytes, name: str, label: str):
+    def __init__(self, rom: bytes, label: str):
         self.rom = rom
-        self.name = name
-        self.label = label
         self.temperature_f = None
-        self.temperature_c = None
+        self.label = label
+        self.name = "<unknown name>"
+        self.active = False
 
 
 class SensorBox(TFT):
@@ -81,6 +83,7 @@ class SensorBox(TFT):
         self.last_push_had_errors = False
         self.last_push_ms = 0
         self.time_synced = False
+        self.retrieved_sensor_info = False
 
         # init the onboard LED as a basic means of communicating status
         self.led = Pin("LED", Pin.OUT)
@@ -92,7 +95,7 @@ class SensorBox(TFT):
         post_y_wifi = 72
         post_y_clock = 90
         post_y_date = 108
-        post_y_time = 126
+        post_y_config = 126
         post_y_booting = 144
 
         # init the TFT base class to get a terminal first
@@ -112,7 +115,7 @@ class SensorBox(TFT):
                 sleep(2)
                 self.wdt.feed()
         self.display_text((15, post_y_starting), "STARTING", TFT.GREEN, 2)
-        self.display_text((0, post_y_version), f"Version {__version__}:{__revision__}", TFT.WHITE, 2)
+        self.display_text((0, post_y_version), f"Version {__version__}.{__revision__}", TFT.WHITE, 2)
         self.display_text((0, post_y_screen), "Screen:  OK", TFT.WHITE, 2)
         self.wdt.feed()
 
@@ -123,15 +126,15 @@ class SensorBox(TFT):
         self.wdt.feed()
         roms_by_hex = {rom.hex(): rom for rom in scanned_roms}
         self.sensors = []
-        for label, search_hex, search_name in CONNECTED_SENSORS:
+        for label, search_hex in CONNECTED_SENSORS:
             rom = roms_by_hex.get(search_hex)
             if rom is None:
                 self.show_fatal_error(
-                    f"Could not initialize sensor {search_name} 'with label \"{label}\"; check connections; will restart in 30 seconds")
+                    f"Could not initialize sensor with label \"{label}\"; check connections; will restart in 30 seconds")
                 while True:  # just hang here forever, we don't want to continue without the sensors
                     sleep(2)
                     self.wdt.feed()
-            self.sensors.append(Sensor(rom, search_name, label))
+            self.sensors.append(Sensor(rom, label))
         self.display_text((0, post_y_sensors), "Sensors: OK", TFT.WHITE, 2)
         self.wdt.feed()
 
@@ -143,27 +146,33 @@ class SensorBox(TFT):
         if self.wlan.isconnected():
             self.ip, _, _, _ = self.wlan.ifconfig()
             self.ssid = self.wlan.config('ssid')
-        if self.wlan.isconnected():
             self.display_text((0, post_y_wifi), "Wi-Fi:   OK", TFT.WHITE, 2)
             self.try_to_sync_time()
             if self.time_synced:
                 t = localtime()
                 self.display_text((0, post_y_clock), "Clock:   OK", TFT.WHITE, 2)
                 self.display_text((0, post_y_date), "Date: {:02d}/{:02d}".format(t[1], t[2]), TFT.WHITE, 2)
-                self.display_text((0, post_y_time), "UTC:  {:02d}:{:02d}".format(t[3], t[4]), TFT.WHITE, 2)
             else:
                 self.show_fatal_error("CLOCK SYNC ERROR, will continue to boot in 5 seconds and retry sync later.")
+                sleep(5)
+            self.try_to_get_sensor_details()
+            if self.retrieved_sensor_info:
+                self.display_text((0, post_y_config), "Config:  OK", TFT.WHITE, 2)
+            else:
+                self.display_text((0, post_y_config), "Config: ERR", TFT.RED, 2)
+                self.show_fatal_error("Could not retrieve sensor config data from GitHub, will continue to boot in 5 seconds and retry later.")
                 sleep(5)
         else:
             self.display_text((0, post_y_wifi), "Wi-Fi:  ERR", TFT.RED, 2)
             self.display_text((0, post_y_date), "COULD NOT ", TFT.RED, 2)
-            self.display_text((0, post_y_time), "CONNECT", TFT.RED, 2)
+            self.display_text((0, post_y_config), "CONNECT", TFT.RED, 2)
         self.wdt.feed()
 
         self.display_text((0, post_y_booting), "BOOTING UP!", TFT.WHITE, 2)
         self.wdt.feed()
 
     def run(self):
+        github_push_interval_ms = 3_600_000
         self.wdt.feed()
         first_time = True
         while True:
@@ -179,7 +188,11 @@ class SensorBox(TFT):
                     if not self.time_synced:
                         self.try_to_sync_time()
                         self.wdt.feed()
-                    if self.time_synced and (first_time or ticks_diff(ticks_ms(), self.last_push_ms) > GITHUB_PUSH_INTERVAL_MS):
+                    if not self.retrieved_sensor_info:
+                        self.try_to_get_sensor_details()
+                    # we don't necessarily need the sensor extra info to push to GitHub, so no need to check if self.retrieved_sensor_info
+                    reached_push_time = ticks_diff(ticks_ms(), self.last_push_ms) > github_push_interval_ms
+                    if self.time_synced and (first_time or reached_push_time):
                         all_successful = self.push_to_github()
                         if all_successful:
                             self.last_push_ms = ticks_ms()
@@ -189,7 +202,7 @@ class SensorBox(TFT):
                             self.last_push_had_errors = True
                         self.wdt.feed()
                 self.regular_update()
-                for _ in range(10):
+                for _ in range(10):  # actual wait loop between sensing temperature
                     sleep(1)
                     self.wdt.feed()
             except KeyboardInterrupt:  # pragma: no cover
@@ -236,7 +249,10 @@ class SensorBox(TFT):
         # Need to alert here on the screen if the sensor data is bad
         y = 17
         for sensor in self.sensors:
-            self.display_text((0, y), f"{sensor.label} {sensor.name}", TFT.WHITE, 1)
+            if sensor.active:
+                self.display_text((0, y), f"{sensor.label} {sensor.name}", TFT.WHITE, 1)
+            else:
+                self.display_text((0, y), f"{sensor.label} {sensor.name}", TFT.YELLOW, 1)
             y += 10
             if sensor.temperature_f:
                 temp_string = f"{sensor.temperature_f:.2f} F"
@@ -315,8 +331,8 @@ class SensorBox(TFT):
         sleep_ms(750)  # wait 750ms after calling convert_temp and before sampling temps
         for sensor in self.sensors:
             try:
-                sensor.temperature_c = self.ds.read_temp(sensor.rom)
-                sensor.temperature_f = (sensor.temperature_c * 9.0 / 5.0) + 32.0
+                temperature_c = self.ds.read_temp(sensor.rom)
+                sensor.temperature_f = (temperature_c * 9.0 / 5.0) + 32.0
             except Exception as e:
                 raise Exception(f"Could not get temperature from sensor named {sensor.name}") from e
 
@@ -337,6 +353,29 @@ class SensorBox(TFT):
         finally:
             s.close()
 
+    def try_to_get_sensor_details(self):
+        url = 'https://raw.githubusercontent.com/okielife/TempSensors/refs/heads/gh-pages/_data/config.json' # TODO: Make this versioned/tagged
+        # noinspection PyBroadException
+        try:
+            response = get(url)
+            if response.status_code in (200, 201):
+                data = load_json(response.raw)
+                for sensor in self.sensors:
+                    sensor.label = data['rom_hex_to_cable_number'][sensor.rom.hex()]
+                    if sensor.label in data['sensors']:
+                        sensor.name = data['sensors'][sensor.label]['short_name']
+                        sensor.active = True
+                    else:
+                        sensor.name = "INACTIVE SENSOR"
+                        sensor.active = False
+                self.retrieved_sensor_info = True
+            else:
+                print("HTTP Error while trying to get sensor config:", response.status_code)
+            response.close()
+        except Exception as e:
+            print(e)
+            pass  # just allow it to continue, sensors will be unnamed for now
+
     def push_to_github(self) -> bool:
         # we will return true if all were successful, but if any fail, it's fine, the unresponsive sensor check will alert us
         all_success = True
@@ -344,19 +383,19 @@ class SensorBox(TFT):
         current = f"{t[0]}-{t[1]:02d}-{t[2]:02d}-{t[3]:02d}-{t[4]:02d}-{t[5]:02d}"
         for sensor in self.sensors:
             file_content = f"""---
-sensor_id: {sensor.name}
-temperature: {sensor.temperature_c}
+sensor_name: {sensor.name}
+temperature: {sensor.temperature_f}
 measurement_time: {current}
 ---
 {{}}
 """
-            file_name = f"{current}_{sensor.name}.html"
-            file_path = f"_posts/{sensor.name}/{file_name}"
-            url = f"https://api.github.com/repos/okielife/TempSensors/contents/{file_path}"  # ?ref=gh-pages
+            file_name = f"{current}_{sensor.rom.hex()}.html"
+            file_path = f"_posts/{sensor.rom.hex()}/{file_name}"
+            url = f"https://api.github.com/repos/okielife/TempSensors/contents/{file_path}"
             headers = {'Accept': 'application/vnd.github + json', 'User-Agent': 'Temp Sensor',
                        'Authorization': f'Token {GITHUB_TOKEN}'}
             encoded_content = b2a_base64(file_content.encode()).decode()
-            data = {'message': f"Updating {file_path}", 'content': encoded_content}
+            data = {'message': f"Updating {file_path}", 'content': encoded_content, 'branch': 'gh-pages'}
             try:
                 response = put(url, headers=headers, json=data)
                 if response.status_code not in (200, 201):
@@ -379,5 +418,3 @@ if __name__ == "__main__":
     # we are launching this file manually from Thonny - do not create the watchdog
     r = SensorBox(enable_watchdog=False)
     r.run()
-
-
