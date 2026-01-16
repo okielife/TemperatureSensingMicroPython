@@ -19,7 +19,7 @@ from st7735 import TFT, FONT, TFTColor
 from config import WIFI_NETWORKS, CONNECTED_SENSORS, GITHUB_TOKEN
 
 __version__ = 3
-__revision__ = 4
+__revision__ = 5
 
 __diagram__ = """
   Looking from "above"
@@ -58,7 +58,7 @@ class Sensor:
         self.rom = rom
         self.temperature_f = None
         self.label = label
-        self.name = "<unknown name>"
+        self.name = "UNKNOWN_NAME"
         self.active = False
 
 
@@ -383,13 +383,15 @@ class SensorBox(TFT):
         current = f"{t[0]}-{t[1]:02d}-{t[2]:02d}-{t[3]:02d}-{t[4]:02d}-{t[5]:02d}"
         for sensor in self.sensors:
             file_content = f"""---
+sensor_id: {sensor.rom.hex()}
 sensor_name: {sensor.name}
 temperature: {sensor.temperature_f}
 measurement_time: {current}
 ---
 {{}}
 """
-            file_name = f"{current}_{sensor.rom.hex()}.html"
+            sensor_name_cleaned = sensor.name.replace(" ", "_")
+            file_name = f"{current}_{sensor.rom.hex()}_{sensor_name_cleaned}.html"
             file_path = f"_posts/{sensor.rom.hex()}/{file_name}"
             url = f"https://api.github.com/repos/okielife/TempSensors/contents/{file_path}"
             headers = {'Accept': 'application/vnd.github + json', 'User-Agent': 'Temp Sensor',
