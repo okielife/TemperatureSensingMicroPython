@@ -17,7 +17,7 @@ from st7735 import TFT, FONT, TFTColor
 from config import WIFI_NETWORKS, GITHUB_PUSH_INTERVAL_MS, CONNECTED_SENSORS, GITHUB_TOKEN
 
 __version__ = 3
-__revision__ = 2
+__revision__ = 3
 
 __diagram__ = """
   Looking from "above"
@@ -165,6 +165,7 @@ class SensorBox(TFT):
 
     def run(self):
         self.wdt.feed()
+        first_time = True
         while True:
             try:
                 self.update_temperatures()
@@ -178,7 +179,7 @@ class SensorBox(TFT):
                     if not self.time_synced:
                         self.try_to_sync_time()
                         self.wdt.feed()
-                    if self.time_synced and ticks_diff(ticks_ms(), self.last_push_ms) > GITHUB_PUSH_INTERVAL_MS:
+                    if self.time_synced and (first_time or ticks_diff(ticks_ms(), self.last_push_ms) > GITHUB_PUSH_INTERVAL_MS):
                         all_successful = self.push_to_github()
                         if all_successful:
                             self.last_push_ms = ticks_ms()
@@ -200,6 +201,7 @@ class SensorBox(TFT):
                 for _ in range(30):
                     sleep(1)
                     self.wdt.feed()
+            first_time = False
 
     # noinspection PyTypeHints
     def display_text(self, point: tuple[int, int], text: str, color: TFTColor, size: int):
@@ -238,8 +240,8 @@ class SensorBox(TFT):
             y += 10
             if sensor.temperature_f:
                 temp_string = f"{sensor.temperature_f:.2f} F"
-                self.display_text((27, y), f"{sensor.temperature_f:5.2f} F", TFT.WHITE, 2)
-                if len(temp_string) == 7:  # draw the degree symbol if it's like "XX.YY F"
+                self.display_text((27, y), temp_string, TFT.WHITE, 2)
+                if len(temp_string) == 6 or len(temp_string) == 7:  # draw the degree symbol if it's like "X.YY F" or "XX.YY F"
                     self.circle((89, y+3), 3, TFT.WHITE)
             else:
                 self.display_text((27, y), f"NULL", TFT.YELLOW, 1)
@@ -350,7 +352,7 @@ measurement_time: {current}
 """
             file_name = f"{current}_{sensor.name}.html"
             file_path = f"_posts/{sensor.name}/{file_name}"
-            url = f"https://api.github.com/repos/okielife/TempSensors/contents/{file_path}"
+            url = f"https://api.github.com/repos/okielife/TempSensors/contents/{file_path}"  # ?ref=gh-pages
             headers = {'Accept': 'application/vnd.github + json', 'User-Agent': 'Temp Sensor',
                        'Authorization': f'Token {GITHUB_TOKEN}'}
             encoded_content = b2a_base64(file_content.encode()).decode()
@@ -377,4 +379,5 @@ if __name__ == "__main__":
     # we are launching this file manually from Thonny - do not create the watchdog
     r = SensorBox(enable_watchdog=False)
     r.run()
+
 
